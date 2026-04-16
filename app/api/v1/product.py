@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
+from app.models.invoice_item import InvoiceItem
 from app.models.product import Product
 from app.schemas.product import ProductCreate, ProductResponse
 
@@ -59,6 +60,13 @@ def delete_product(id: int, db: Session = Depends(get_db)):
     product = db.query(Product).filter(Product.id == id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+
+    in_use = db.query(InvoiceItem).filter(InvoiceItem.product_id == id).first()
+    if in_use:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete product: it is referenced by one or more invoices"
+        )
 
     db.delete(product)
     db.commit()
